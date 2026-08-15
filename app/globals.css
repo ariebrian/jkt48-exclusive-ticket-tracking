@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Tailwind v4 defaults dark: to prefers-color-scheme; switch to a class
+   strategy so the toggle button (not just OS setting) controls theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}

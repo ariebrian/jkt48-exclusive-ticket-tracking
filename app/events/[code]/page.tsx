@@ -2,12 +2,20 @@ import { notFound } from "next/navigation";
 import { getEventByCode } from "@/lib/db/events";
 import { getLatestSnapshotsForEvent } from "@/lib/db/snapshots";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { shouldRefreshOnVisit } from "@/lib/refresh-policy";
+import { runSnapshotForEvent } from "@/lib/snapshot-job";
 import SessionsView from "./SessionsView";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const event = await getEventByCode(code);
   if (!event) notFound();
+
+  if (shouldRefreshOnVisit(event)) {
+    // Best-effort: never throws, failures are recorded on the event row and
+    // this visit just renders whatever's already in Supabase.
+    await runSnapshotForEvent(event, { maxRetries: 0 });
+  }
 
   const sessions = await getLatestSnapshotsForEvent(event.id);
 

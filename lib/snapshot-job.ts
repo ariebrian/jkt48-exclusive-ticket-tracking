@@ -6,7 +6,7 @@ import { writeSnapshotBatch } from './db/snapshots';
 import type { EventRow } from './types/db';
 
 const SNAPSHOT_DELAY_MS = Number(process.env.SNAPSHOT_DELAY_MS) || 750;
-const MAX_RETRIES = 2;
+const DEFAULT_MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = [1000, 3000];
 
 function sleep(ms: number) {
@@ -20,12 +20,17 @@ export interface SnapshotRunResult {
 
 // Fetches one event with retry/backoff, then writes its sessions/lanes and
 // a snapshot row per lane. Failure here never throws — it's recorded on the
-// event row and reported in the run summary so one bad event doesn't abort
-// the whole cron run.
-export async function runSnapshotForEvent(event: EventRow): Promise<SnapshotRunResult> {
+// event row and reported by the caller so one bad event doesn't abort a
+// batch run. maxRetries defaults to the background-job value; visit-triggered
+// callers pass 0 to fail fast rather than add latency to a page load.
+export async function runSnapshotForEvent(
+  event: EventRow,
+  options?: { maxRetries?: number },
+): Promise<SnapshotRunResult> {
+  const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
   let lastError = '';
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const result = await fetchExclusive(event.code);
 
     if (result.ok) {
@@ -42,7 +47,7 @@ export async function runSnapshotForEvent(event: EventRow): Promise<SnapshotRunR
     }
 
     lastError = `${result.error}: ${result.detail}`;
-    if (attempt < MAX_RETRIES) {
+    if (attempt < maxRetries) {
       await sleep(RETRY_BACKOFF_MS[attempt]);
     }
   }

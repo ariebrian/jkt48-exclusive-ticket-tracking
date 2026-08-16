@@ -33,6 +33,29 @@ export interface LiveSession {
   lanes: LiveSessionLane[];
 }
 
+// Latest snapshot_at across all lanes in all sessions, as an ISO string, or
+// null if no lane has ever been snapshotted. All lanes from one poll run
+// share a single snapshot_at (set once per writeSnapshotBatch call), so
+// taking the max here is equivalent to reading any one lane's value.
+export function getLatestSnapshotTimestamp(sessions: LiveSession[]): string | null {
+  let latest: string | null = null;
+  let latestMs = -Infinity;
+
+  for (const session of sessions) {
+    for (const lane of session.lanes) {
+      if (!lane.snapshotAt) continue;
+      const ms = new Date(lane.snapshotAt).getTime();
+      if (Number.isNaN(ms)) continue;
+      if (ms > latestMs) {
+        latestMs = ms;
+        latest = lane.snapshotAt;
+      }
+    }
+  }
+
+  return latest;
+}
+
 // Live quota view for one event: sessions with their lanes, each lane
 // carrying its latest snapshot (or nulls if it's never been polled yet).
 export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveSession[]> {

@@ -39,7 +39,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ co
         </div>
         <div className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
           {lastUpdatedAt ? (
-            <span>Last updated {new Date(lastUpdatedAt).toLocaleString()}</span>
+            <span>Last updated {new Date(lastUpdatedAt).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })}</span>
           ) : (
             <span>No data yet</span>
           )}

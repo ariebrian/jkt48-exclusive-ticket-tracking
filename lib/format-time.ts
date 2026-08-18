@@ -1,16 +1,23 @@
-// dd-mm-yy h:m:s, zero-padded, in the viewer's local timezone.
+// dd-mm-yy h:m:s, zero-padded, always in Asia/Jakarta (WIB) — fixed
+// regardless of the server's local timezone, so local dev (typically WIB)
+// and Vercel prod (defaults to UTC) render the same wall-clock time for the
+// same underlying timestamp.
 export function formatExactTime(iso: string): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return 'unknown';
 
-  const pad = (n: number) => String(n).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(then);
 
-  const day = pad(then.getDate());
-  const month = pad(then.getMonth() + 1);
-  const year = pad(then.getFullYear() % 100);
-  const hours = pad(then.getHours());
-  const minutes = pad(then.getMinutes());
-  const seconds = pad(then.getSeconds());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
 
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+  return `${get('day')}-${get('month')}-${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
 }

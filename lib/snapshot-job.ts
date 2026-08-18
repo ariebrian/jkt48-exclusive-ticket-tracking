@@ -3,6 +3,7 @@ import { fetchExclusive } from './jkt48-api';
 import { listActiveEvents, applySuccessfulPoll, recordFailedPoll } from './db/events';
 import { upsertSessionsAndLanes } from './db/sessions';
 import { writeSnapshotBatch } from './db/snapshots';
+import { getSalesPeriodEndDate } from './refresh-policy';
 import type { EventRow } from './types/db';
 
 const SNAPSHOT_DELAY_MS = Number(process.env.SNAPSHOT_DELAY_MS) || 750;
@@ -60,14 +61,29 @@ export interface SnapshotJobSummary {
   total: number;
   succeeded: number;
   failed: number;
+  skipped: number;
   errors: { code: string; error: string }[];
 }
 
 // Polls all tracked events sequentially with a delay between each — never
 // in parallel — to stay friendly to an API with no published rate limits.
+// Events whose sales period has confirmably ended are skipped, same gate
+// `shouldRefreshOnVisit` applies for page-visit refreshes — otherwise a
+// scheduled/manual bulk run keeps re-fetching finished events indefinitely.
 export async function runSnapshotJob(): Promise<SnapshotJobSummary> {
-  const events = await listActiveEvents();
-  const summary: SnapshotJobSummary = { total: events.length, succeeded: 0, failed: 0, errors: [] };
+  const now = new Date();
+  const allEvents = await listActiveEvents();
+  const events = allEvents.filter((event) => {
+    const salesEndDate = getSalesPeriodEndDate(event.sales_period);
+    return !salesEndDate || now <= salesEndDate;
+  });
+  const summary: SnapshotJobSummary = {
+    total: events.length,
+    succeeded: 0,
+    failed: 0,
+    skipped: allEvents.length - events.length,
+    errors: [],
+  };
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i];

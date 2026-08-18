@@ -56,6 +56,16 @@ export function getLatestSnapshotTimestamp(sessions: LiveSession[]): string | nu
   return latest;
 }
 
+// Jalur labels are things like "Jalur 1", "Jalur 2", ... "Jalur 10" — plain
+// string sort would put "Jalur 10" before "Jalur 2", so sort on the
+// embedded number when present, falling back to string comparison.
+function compareLaneLabels(a: string, b: string): number {
+  const numA = Number(a.match(/\d+/)?.[0]);
+  const numB = Number(b.match(/\d+/)?.[0]);
+  if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
+  return a.localeCompare(b);
+}
+
 // Live quota view for one event: sessions with their lanes, each lane
 // carrying its latest snapshot (or nulls if it's never been polled yet).
 export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveSession[]> {
@@ -106,17 +116,19 @@ export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveS
       sessionDate: session.session_date,
       startTime: session.start_time,
       endTime: session.end_time,
-      lanes: (session.session_lanes ?? []).map((lane) => {
-        const quota = latestByLaneId.get(lane.id);
-        return {
-          id: lane.id,
-          label: lane.label,
-          memberName: lane.member_name,
-          ticketsSold: quota?.tickets_sold ?? null,
-          availableQuota: quota?.available_quota ?? null,
-          snapshotAt: quota?.snapshot_at ?? null,
-        };
-      }),
+      lanes: (session.session_lanes ?? [])
+        .map((lane) => {
+          const quota = latestByLaneId.get(lane.id);
+          return {
+            id: lane.id,
+            label: lane.label,
+            memberName: lane.member_name,
+            ticketsSold: quota?.tickets_sold ?? null,
+            availableQuota: quota?.available_quota ?? null,
+            snapshotAt: quota?.snapshot_at ?? null,
+          };
+        })
+        .sort((a, b) => compareLaneLabels(a.label, b.label)),
     }),
   );
 }

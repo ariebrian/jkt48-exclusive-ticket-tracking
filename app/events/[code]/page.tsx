@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getEventByCode } from "@/lib/db/events";
 import { getLatestSnapshotsForEvent, getLatestSnapshotTimestamp } from "@/lib/db/snapshots";
-import { formatRelativeTime } from "@/lib/format-time";
+import { formatExactTime } from "@/lib/format-time";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { shouldRefreshOnVisit } from "@/lib/refresh-policy";
 import { runSnapshotForEvent } from "@/lib/snapshot-job";
@@ -40,9 +40,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ co
         </div>
         <div className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
           {lastUpdatedAt ? (
-            <span title={new Date(lastUpdatedAt).toLocaleString()}>
-              Last updated {formatRelativeTime(lastUpdatedAt)}
-            </span>
+            <span>Last updated {formatExactTime(lastUpdatedAt)}</span>
           ) : (
             <span>No data yet</span>
           )}

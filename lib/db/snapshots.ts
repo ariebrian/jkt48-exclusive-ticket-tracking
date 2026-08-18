@@ -56,6 +56,15 @@ export function getLatestSnapshotTimestamp(sessions: LiveSession[]): string | nu
   return latest;
 }
 
+// Lane labels are "Jalur N" (jalur = lane in Indonesian) — sort on the
+// trailing number rather than the stored `position` column, since existing
+// rows only get a correct `position` after their next poll and sit at the
+// backfill default (0) until then, which produces near-arbitrary ordering.
+function laneLabelNumber(label: string): number {
+  const match = label.match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+}
+
 // Live quota view for one event: sessions with their lanes, each lane
 // carrying its latest snapshot (or nulls if it's never been polled yet).
 export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveSession[]> {
@@ -63,7 +72,7 @@ export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveS
 
   const { data: sessions, error: sessionsError } = await db
     .from('event_sessions')
-    .select('id, label, session_date, start_time, end_time, session_lanes(id, label, member_name)')
+    .select('id, label, session_date, start_time, end_time, session_lanes(id, label, member_name, position)')
     .eq('event_id', eventId)
     .order('session_date', { ascending: true })
     .order('start_time', { ascending: true });
@@ -99,24 +108,26 @@ export async function getLatestSnapshotsForEvent(eventId: string): Promise<LiveS
       session_date: string;
       start_time: string | null;
       end_time: string | null;
-      session_lanes: { id: string; label: string; member_name: string }[];
+      session_lanes: { id: string; label: string; member_name: string; position: number }[];
     }) => ({
       id: session.id,
       label: session.label,
       sessionDate: session.session_date,
       startTime: session.start_time,
       endTime: session.end_time,
-      lanes: (session.session_lanes ?? []).map((lane) => {
-        const quota = latestByLaneId.get(lane.id);
-        return {
-          id: lane.id,
-          label: lane.label,
-          memberName: lane.member_name,
-          ticketsSold: quota?.tickets_sold ?? null,
-          availableQuota: quota?.available_quota ?? null,
-          snapshotAt: quota?.snapshot_at ?? null,
-        };
-      }),
+      lanes: (session.session_lanes ?? [])
+        .map((lane) => {
+          const quota = latestByLaneId.get(lane.id);
+          return {
+            id: lane.id,
+            label: lane.label,
+            memberName: lane.member_name,
+            ticketsSold: quota?.tickets_sold ?? null,
+            availableQuota: quota?.available_quota ?? null,
+            snapshotAt: quota?.snapshot_at ?? null,
+          };
+        })
+        .sort((a, b) => laneLabelNumber(a.label) - laneLabelNumber(b.label)),
     }),
   );
 }

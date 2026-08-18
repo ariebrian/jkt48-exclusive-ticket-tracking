@@ -136,6 +136,11 @@ function LaneCard({ lane }: { lane: LiveSessionLane }) {
       {/* <MemberAvatar memberName={lane.memberName} /> */}
       <p className="text-sm font-bold leading-tight text-zinc-900 dark:text-zinc-50">{lane.memberName}</p>
       <p className="text-xs text-zinc-400 dark:text-zinc-500">{lane.label}</p>
+      {hasData && (
+        <p className={isSoldOut ? "text-xs text-zinc-400 dark:text-zinc-500" : "text-xs text-white"}>
+          {lane.ticketsSold} sold
+        </p>
+      )}
       <div
         className={`w-full rounded-md px-2 py-1.5 text-xs font-medium ${
           isSoldOut

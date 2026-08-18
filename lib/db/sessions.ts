@@ -66,10 +66,11 @@ export async function upsertSessionsAndLanes(
 
     if (session.session_detail.length === 0) continue;
 
-    const laneRows = session.session_detail.map((detail) => ({
+    const laneRows = session.session_detail.map((detail, position) => ({
       session_id: sessionRow.id,
       label: detail.label,
       member_name: detail.jkt48_member_name,
+      position,
     }));
 
     const { data: lanes, error: laneError } = await db

@@ -7,6 +7,7 @@ import EventPicker from "./EventPicker";
 import { listAllEvents } from "@/lib/db/events";
 import { getMinSessionDate } from "@/lib/db/sessions";
 import { getCategoryLabel } from "@/lib/category-labels";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,6 +69,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </nav>
         </header>
         <main className="flex flex-1 flex-col">{children}</main>
+        <Analytics />
       </body>
     </html>
   );
